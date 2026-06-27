@@ -370,7 +370,14 @@
     <!-- SETTINGS -->
     <div class="screen" id="settings-screen">
       <h2>⚙️ Einstellungen</h2>
-      <p style="color:var(--muted);font-size:.8rem;margin-bottom:12px;">Version 3.1 — Claude Vision</p>
+      <p style="color:var(--muted);font-size:.8rem;margin-bottom:12px;">Version 3.2 — Claude Vision</p>
+
+      <div class="card" style="margin-bottom:16px;">
+        <div style="font-weight:600;color:var(--accent2);margin-bottom:8px;">🌿 Infos für alle Pflanzen laden</div>
+        <p style="font-size:.85rem;color:var(--muted);margin-bottom:12px;">Lädt Bestimmungsmerkmale und Fun Facts für alle Pflanzen ohne Info. Danach sofort abrufbar.</p>
+        <button class="btn btn-primary" onclick="loadAllInfos()" id="btn-load-all">Alle Infos laden</button>
+        <div id="load-all-status" style="margin-top:10px;font-size:.85rem;color:var(--muted);"></div>
+      </div>
       <p class="settings-note">
         Für die Pflanzenerkennung wird ein Anthropic API-Key benötigt.<br>
         Er wird nur lokal auf deinem Gerät gespeichert.
@@ -973,6 +980,75 @@ openDB().then(() => {
   updateDueBadge();
   updateKeyStatus();
 }).catch(err => alert('IndexedDB Fehler: ' + err));
+async function loadAllInfos() {
+  const key = getApiKey();
+  if (!key) { alert('Bitte zuerst API Key eintragen!'); return; }
+
+  const btn = document.getElementById('btn-load-all');
+  const status = document.getElementById('load-all-status');
+  btn.disabled = true;
+
+  const all = await dbGetAll();
+  const without = all.filter(p => !p.infoHtml && p.name);
+
+  if (!without.length) {
+    status.textContent = '✓ Alle Pflanzen haben bereits Infos!';
+    btn.disabled = false;
+    return;
+  }
+
+  status.textContent = `0 / ${without.length} geladen …`;
+
+  for (let i = 0; i < without.length; i++) {
+    const p = without[i];
+    status.textContent = `${i+1} / ${without.length}: ${p.name} …`;
+
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': key,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 500,
+          messages: [{
+            role: 'user',
+            content: `Gib mir Informationen zur Pflanze "${p.name}"${p.latin ? ` (${p.latin})` : ''} auf Deutsch.
+
+**Bestimmungsmerkmale:**
+Beschreibe 4-5 typische Erkennungsmerkmale (Blätter, Blüten, Stängel, Wuchsform). Fließtext, ca. 3-4 Sätze.
+
+**Fun Facts:**
+3 überraschende Fakten – historisch, kulinarisch, medizinisch oder ökologisch. Fließtext, ca. 3-4 Sätze.
+
+Kein Markdown außer den zwei Überschriften mit **.`
+          }]
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error?.message);
+      const text = data.content[0].text;
+      const html = text
+        .replace(/\*\*(.+?)\*\*/g, '<h3>$1</h3>')
+        .split('\n').filter(l => l.trim()).map(l => l.startsWith('<h3>') ? l : '<p>' + l + '</p>').join('');
+      const full = await dbGet(p.id);
+      if (full) { full.infoHtml = html; await dbPut(full); infoCache[p.id] = html; }
+    } catch(err) {
+      console.warn('Fehler bei', p.name, err.message);
+    }
+
+    // Kurze Pause zwischen Anfragen
+    await new Promise(r => setTimeout(r, 500));
+  }
+
+  status.textContent = `✓ Fertig! ${without.length} Pflanzen aktualisiert.`;
+  btn.disabled = false;
+}
+
 if ('serviceWorker' in navigator) { navigator.serviceWorker.getRegistrations().then(r => r.forEach(s => s.unregister())); }
 </script>
 </body>
