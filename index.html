@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pflanzen Erkennung</title>
+<style>
+body { font-family: sans-serif; background: #1a2e1a; color: #fff; display: flex; flex-direction: column; align-items: center; padding: 24px 16px; margin: 0; }
+h1 { color: #a8d5a2; margin-bottom: 24px; }
+button { background: #4a7c59; color: white; border: none; padding: 14px 28px; border-radius: 10px; font-size: 16px; margin: 8px; cursor: pointer; width: 100%; max-width: 360px; }
+button:disabled { opacity: 0.5; }
+input { width: 100%; max-width: 340px; padding: 10px; border-radius: 8px; border: none; font-size: 14px; margin: 6px 0; }
+img#preview { max-width: 360px; width: 100%; border-radius: 12px; margin: 16px 0; display: none; }
+#result { background: #2a3e2a; border-radius: 12px; padding: 16px; margin-top: 16px; width: 100%; max-width: 360px; display: none; line-height: 1.6; }
+#settings-box { background: #2a3e2a; border-radius: 12px; padding: 16px; margin-top: 16px; width: 100%; max-width: 360px; }
+#settings-box h3 { color: #a8d5a2; margin: 0 0 12px; }
+#key-status { font-size: .8rem; color: #a8d5a2; margin-top: 6px; }
+#version { color: #555; font-size: .75rem; margin-top: 24px; }
+</style>
+</head>
+<body>
+<h1>🌿 Pflanzen Erkennung</h1>
+
+<button onclick="document.getElementById('f').click()">📷 Foto aufnehmen</button>
+<input type="file" id="f" accept="image/*" capture="environment" style="display:none" onchange="onPhoto(this)">
+
+<img id="preview">
+<button id="btn" onclick="erkennen()" style="display:none">🔍 Pflanze erkennen</button>
+
+<div id="result"></div>
+
+<div id="settings-box">
+  <h3>⚙️ API Key</h3>
+  <input type="password" id="key-input" placeholder="sk-ant-api03-..." autocomplete="off">
+  <button onclick="saveKey()" style="margin-top:8px;">Speichern</button>
+  <div id="key-status"></div>
+</div>
+
+<div id="version">Version 1.0</div>
+
+<script>
+let b64, mime;
+
+function getKey() { return localStorage.getItem('ant_key') || ''; }
+
+function saveKey() {
+  const k = document.getElementById('key-input').value.trim();
+  if (!k) { alert('Bitte Key eingeben!'); return; }
+  localStorage.setItem('ant_key', k);
+  document.getElementById('key-input').value = '';
+  updateKeyStatus();
+  alert('✓ Gespeichert!');
+}
+
+function updateKeyStatus() {
+  const k = getKey();
+  document.getElementById('key-status').textContent = k ? '✓ API Key gespeichert' : '✗ Kein Key gespeichert';
+}
+
+function onPhoto(input) {
+  const file = input.files[0];
+  if (!file) return;
+  mime = file.type || 'image/jpeg';
+  const reader = new FileReader();
+  reader.onload = e => {
+    b64 = e.target.result.split(',')[1];
+    document.getElementById('preview').src = e.target.result;
+    document.getElementById('preview').style.display = 'block';
+    document.getElementById('btn').style.display = 'block';
+    document.getElementById('result').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function erkennen() {
+  const key = getKey();
+  if (!key) { alert('Bitte zuerst API Key eintragen!'); return; }
+  const btn = document.getElementById('btn');
+  btn.textContent = '⏳ Erkenne...';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 200,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: mime, data: b64 } },
+            { type: 'text', text: 'Was ist das für eine Pflanze? Antworte auf Deutsch: Deutscher Name, Lateinischer Name, ein kurzer Satz zur Pflanze.' }
+          ]
+        }]
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error?.message || 'Fehler ' + res.status);
+
+    const result = document.getElementById('result');
+    result.textContent = data.content[0].text;
+    result.style.display = 'block';
+
+  } catch (err) {
+    const result = document.getElementById('result');
+    result.textContent = 'Fehler: ' + err.message;
+    result.style.display = 'block';
+  } finally {
+    btn.textContent = '🔍 Pflanze erkennen';
+    btn.disabled = false;
+  }
+}
+
+updateKeyStatus();
+</script>
+</body>
+</html>
