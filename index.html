@@ -371,12 +371,13 @@
     <!-- SETTINGS -->
     <div class="screen" id="settings-screen">
       <h2>⚙️ Einstellungen</h2>
-      <p style="color:var(--muted);font-size:.8rem;margin-bottom:12px;">Version 3.4 — Claude Vision</p>
+      <p style="color:var(--muted);font-size:.8rem;margin-bottom:12px;">Version 3.6 — Claude Vision</p>
 
       <div class="card" style="margin-bottom:16px;">
         <div style="font-weight:600;color:var(--accent2);margin-bottom:8px;">🌿 Infos für alle Pflanzen laden</div>
         <p style="font-size:.85rem;color:var(--muted);margin-bottom:12px;">Lädt Bestimmungsmerkmale und Fun Facts für alle Pflanzen ohne Info. Danach sofort abrufbar.</p>
-        <button class="btn btn-primary" onclick="loadAllInfos()" id="btn-load-all">Alle Infos laden</button>
+        <button class="btn btn-primary" onclick="loadAllInfos(false)" id="btn-load-all">Alle Infos laden</button>
+        <button class="btn btn-secondary" onclick="loadAllInfos(true)" style="margin-top:8px;">🔄 Alle Infos neu generieren</button>
         <div id="load-all-status" style="margin-top:10px;font-size:.85rem;color:var(--muted);"></div>
       </div>
       <p class="settings-note">
@@ -860,7 +861,7 @@ async function showInfoModal() {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: 500,
+        max_tokens: 1024,
         messages: [{
           role: 'user',
           content: `Gib mir Informationen zur Pflanze "${p.name}"${p.latin ? ` (${p.latin})` : ''} auf Deutsch.
@@ -984,7 +985,7 @@ openDB().then(() => {
   updateDueBadge();
   updateKeyStatus();
 }).catch(err => alert('IndexedDB Fehler: ' + err));
-async function loadAllInfos() {
+async function loadAllInfos(forceReload=false) {
   const key = getApiKey();
   if (!key) { alert('Bitte zuerst API Key eintragen!'); return; }
 
@@ -993,10 +994,10 @@ async function loadAllInfos() {
   btn.disabled = true;
 
   const all = await dbGetAll();
-  const without = all.filter(p => !p.infoHtml && p.name);
+  const without = all.filter(p => (forceReload || !p.infoHtml) && p.name);
 
   if (!without.length) {
-    status.textContent = '✓ Alle Pflanzen haben bereits Infos!';
+    status.textContent = forceReload ? '✓ Keine Pflanzen gefunden.' : '✓ Alle Pflanzen haben bereits Infos!';
     btn.disabled = false;
     return;
   }
@@ -1018,7 +1019,7 @@ async function loadAllInfos() {
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-6',
-          max_tokens: 500,
+          max_tokens: 1024,
           messages: [{
             role: 'user',
             content: `Gib mir Informationen zur Pflanze "${p.name}"${p.latin ? ` (${p.latin})` : ''} auf Deutsch.
