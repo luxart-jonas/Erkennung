@@ -370,7 +370,7 @@
     <!-- SETTINGS -->
     <div class="screen" id="settings-screen">
       <h2>⚙️ Einstellungen</h2>
-      <p style="color:var(--muted);font-size:.8rem;margin-bottom:12px;">Version 3.2 — Claude Vision</p>
+      <p style="color:var(--muted);font-size:.8rem;margin-bottom:12px;">Version 3.3 — Claude Vision</p>
 
       <div class="card" style="margin-bottom:16px;">
         <div style="font-weight:600;color:var(--accent2);margin-bottom:8px;">🌿 Infos für alle Pflanzen laden</div>
@@ -808,14 +808,15 @@ function revealName() {
   function clamp(v,a,b){return Math.min(Math.max(v,a),b);}
   function dist(t){return Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);}
   function mid(t,r){return{x:(t[0].clientX+t[1].clientX)/2-r.left,y:(t[0].clientY+t[1].clientY)/2-r.top};}
+  function clampTx(){const r=wrap.getBoundingClientRect();const maxTx=r.width*(scale-1);tx=clamp(tx,-maxTx,0);ty=clamp(ty,-r.height*(scale-1),0);}
   function apply(){img.style.transform=`translate(${tx}px,${ty}px) scale(${scale})`;}
   wrap.addEventListener('touchstart',e=>{
     if(e.touches.length===2){e.preventDefault();startDist=dist(e.touches);startScale=scale;startTx=tx;startTy=ty;startMid=mid(e.touches,wrap.getBoundingClientRect());}
     else if(e.touches.length===1&&scale>1){startTx=tx;startTy=ty;startMid={x:e.touches[0].clientX,y:e.touches[0].clientY};}
   },{passive:false});
   wrap.addEventListener('touchmove',e=>{
-    if(e.touches.length===2){e.preventDefault();const d=dist(e.touches);const r=wrap.getBoundingClientRect();const m=mid(e.touches,r);const ns=clamp(startScale*(d/startDist),1,5);tx=m.x-(startMid.x-startTx)*(ns/startScale);ty=m.y-(startMid.y-startTy)*(ns/startScale);scale=ns;apply();}
-    else if(e.touches.length===1&&scale>1){e.preventDefault();tx=startTx+(e.touches[0].clientX-startMid.x);ty=startTy+(e.touches[0].clientY-startMid.y);apply();}
+    if(e.touches.length===2){e.preventDefault();const d=dist(e.touches);const r=wrap.getBoundingClientRect();const m=mid(e.touches,r);const ns=clamp(startScale*(d/startDist),1,5);tx=m.x-(startMid.x-startTx)*(ns/startScale);ty=m.y-(startMid.y-startTy)*(ns/startScale);scale=ns;clampTx();apply();}
+    else if(e.touches.length===1&&scale>1){e.preventDefault();tx=startTx+(e.touches[0].clientX-startMid.x);ty=startTy+(e.touches[0].clientY-startMid.y);clampTx();apply();}
   },{passive:false});
   wrap.addEventListener('dblclick',()=>{scale=scale>1?1:2.5;tx=0;ty=0;apply();});
 })();
