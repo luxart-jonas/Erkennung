@@ -295,6 +295,7 @@
         <div class="ai-name" id="ai-name-text"></div>
         <div class="ai-info" id="ai-info-text"></div>
         <button class="btn btn-secondary" style="margin-top:10px;font-size:.88rem;padding:10px" onclick="applyAiName()">✓ Namen übernehmen</button>
+        <a id="lens-link" href="https://lens.google.com" target="_blank" style="display:none;margin-top:8px;font-size:.8rem;color:var(--muted);text-decoration:none;display:none;">🔍 Mit Google Lens prüfen ↗</a>
       </div>
       <button class="btn btn-ai" id="btn-ai-recognize" style="margin-bottom:14px;display:none" onclick="recognizePlant()">🌿 Pflanze automatisch erkennen</button>
 
@@ -370,7 +371,7 @@
     <!-- SETTINGS -->
     <div class="screen" id="settings-screen">
       <h2>⚙️ Einstellungen</h2>
-      <p style="color:var(--muted);font-size:.8rem;margin-bottom:12px;">Version 3.3 — Claude Vision</p>
+      <p style="color:var(--muted);font-size:.8rem;margin-bottom:12px;">Version 3.4 — Claude Vision</p>
 
       <div class="card" style="margin-bottom:16px;">
         <div style="font-weight:600;color:var(--accent2);margin-bottom:8px;">🌿 Infos für alle Pflanzen laden</div>
@@ -564,6 +565,7 @@ document.getElementById('photo-input').addEventListener('change', async e => {
   setPhotoArea('photo-area', addPhotoData);
   // Show AI button if key exists
   document.getElementById('btn-ai-recognize').style.display = getApiKey() ? 'block' : 'none';
+  const ll = document.getElementById('lens-link'); if(ll) ll.style.display = 'none';
   document.getElementById('ai-result').style.display = 'none';
   e.target.value = '';
 });
@@ -638,6 +640,7 @@ async function recognizePlant() {
       germanName + (latinName && latinName !== germanName ? ` (${latinName})` : '');
     document.getElementById('ai-info-text').textContent = result.info || '';
     resultBox.style.display = 'block';
+    document.getElementById('lens-link').style.display = 'inline-block';
 
   } catch (err) {
     alert('Fehler bei der Pflanzenerkennung:\n' + err.message);
