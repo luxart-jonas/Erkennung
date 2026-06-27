@@ -862,7 +862,7 @@ Kein Markdown außer den zwei Überschriften mit **.`
     const html = text
       .replace(/\*\*(.+?)\*\*/g, '<h3>$1</h3>')
       .split('
-').filter(l => l.trim()).map(l => l.startsWith('<h3>') ? l : `<p>${l}</p>`).join('');
+      .split('\n').filter(l => l.trim()).map(l => l.startsWith('<h3>') ? l : '<p>' + l + '</p>').join('');
     infoCache[p.id] = html;
     document.getElementById('info-modal-content').innerHTML = html;
   } catch(err) {
