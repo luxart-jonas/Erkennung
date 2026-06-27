@@ -341,7 +341,7 @@
         <button class="btn btn-secondary" id="btn-reveal" onclick="revealName()">Auflösen</button>
         <div class="learn-grade-row" id="grade-row" style="display:none">
           <button class="btn btn-danger" onclick="gradeCard(false)">✗ Nicht gewusst</button>
-          <button class="btn btn-secondary" onclick="showInfoModal()" style="flex:0 0 auto;padding:0 14px;">ℹ️</button>
+          <button onclick="showInfoModal()" style="background:none;border:none;font-size:1.6rem;cursor:pointer;padding:0 6px;flex:0 0 auto;">ℹ️</button>
           <button class="btn btn-primary" onclick="gradeCard(true)">✓ Gewusst</button>
         </div>
         <div id="delete-row" style="display:none; margin-top:4px;">
@@ -370,7 +370,7 @@
     <!-- SETTINGS -->
     <div class="screen" id="settings-screen">
       <h2>⚙️ Einstellungen</h2>
-      <p style="color:var(--muted);font-size:.8rem;margin-bottom:12px;">Version 3.0 — Claude Vision</p>
+      <p style="color:var(--muted);font-size:.8rem;margin-bottom:12px;">Version 3.1 — Claude Vision</p>
       <p class="settings-note">
         Für die Pflanzenerkennung wird ein Anthropic API-Key benötigt.<br>
         Er wird nur lokal auf deinem Gerät gespeichert.
@@ -823,8 +823,16 @@ async function showInfoModal() {
   document.getElementById('info-modal-name').textContent = p.name || '';
   document.getElementById('info-modal-latin').textContent = p.latin || '';
 
+  // Aus Memory-Cache
   if (infoCache[p.id]) {
     document.getElementById('info-modal-content').innerHTML = infoCache[p.id];
+    return;
+  }
+  // Aus DB-Cache
+  const cached = await dbGet(p.id);
+  if (cached?.infoHtml) {
+    infoCache[p.id] = cached.infoHtml;
+    document.getElementById('info-modal-content').innerHTML = cached.infoHtml;
     return;
   }
 
@@ -864,6 +872,9 @@ Kein Markdown außer den zwei Überschriften mit **.`
       .split('\n').filter(l => l.trim()).map(l => l.startsWith('<h3>') ? l : '<p>' + l + '</p>').join('');
     infoCache[p.id] = html;
     document.getElementById('info-modal-content').innerHTML = html;
+    // Auch in DB speichern für nächste Session
+    const full = await dbGet(p.id);
+    if (full) { full.infoHtml = html; await dbPut(full); }
   } catch(err) {
     document.getElementById('info-modal-content').innerHTML = `<p style="color:var(--danger)">Fehler: ${err.message}</p>`;
   }
